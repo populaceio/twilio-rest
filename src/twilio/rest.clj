@@ -123,7 +123,9 @@
 ;; Twilio REST API IO
 ;;
 
-(def ^{:private true} api-base  "https://api.twilio.com/2010-04-01")
+(def ^{:private true} twilio-base  "https://api.twilio.com")
+(def ^{:private true} api-version  "2010-04-01")
+(def ^{:private true} api-base  (str twilio-base "/" api-version))
 (def debug? (atom false))
 
 (defn account? [acct]
@@ -143,6 +145,14 @@
 
 (defn- postfix-json [url]
   (str url ".json"))
+
+(defn mapcat-pages
+  [acct ks {:keys [next_page_uri] :as body}]
+  (if next_page_uri
+    (->> (get-command acct (str twilio-base next_page_uri) {} false)
+         (mapcat-pages acct ks)
+         (merge-with concat (select-keys body [ks])))
+    body))
 
 (defn- handle-reply
   [{:keys [status body] :as resp}]
@@ -294,6 +304,7 @@
 
 (defmethod list-resources :subaccounts [acct factory]
   (->> (get-command acct (:url factory))
+       (twilio/mapcat-pages acct :accounts)
        :accounts
        (map #(map->Account (assoc % :acct acct)))
        (filter subaccount?)))
@@ -339,6 +350,7 @@
 (defmethod list-resources :applications [acct factory]
   (->> ((:urlfn factory) acct)
        (get-command acct)
+       (twilio/mapcat-pages acct :applications)
        :applications
        (map (map-importer acct map->Application))))
 
@@ -392,11 +404,10 @@
 ;; Takes arguments: area-code, contains, in-region, in-postal-code
 (defmethod list-resources :available [acct factory country &
                                       {:keys [area-code contains in-region in-postal-code] :as options}]
-  (map (map-importer acct map->AvailableNumber)
-       (:available_phone_numbers
-        (get-command acct
-         ((:urlfn factory) acct country)
-         (as-twilio-query-params options)))))
+  (->> (get-command acct ((:urlfn factory) acct country)
+                    (as-twilio-query-params options))
+       :available_phone_numbers
+       (map (map-importer acct map->AvailableNumber))))
 
 (defn available-numbers
   ([acct country code]
@@ -435,10 +446,12 @@
 
 ;; Return a list of the accounts phone numbers
 (defmethod list-resources :incoming [acct factory]
-  (doall
-   (map (map-importer acct map->PhoneNumber)
-        (:incoming_phone_numbers
-         (get-command acct ((:urlfn factory) acct))))))
+  (->> acct
+       ((:urlfn factory))
+       (get-command acct)
+       (twilio/mapcat-pages acct :incoming_phone_numbers)
+       :incoming_phone_numbers
+       (mapv (map-importer acct map->PhoneNumber))))
 
 (defmethod create-resource :incoming
   [acct factory params]
@@ -529,8 +542,13 @@
                                      {:keys [to from date-sent] :as options}]
   (->> (get-command acct ((:urlfn factory) acct)
                     (as-twilio-query-params options))
+       (twilio/mapcat-pages acct :messages)
        :messages
        (map (map-importer acct map->Message))))
+
+(defn messages
+  [acct options]
+  (list-resources acct Accounts options))
 
 (defmethod create-resource :messages [acct factory message]
   {:pre [(every? (comp boolean message) [:from :to :body])]}
