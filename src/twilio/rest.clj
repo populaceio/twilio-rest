@@ -147,12 +147,23 @@
   (str url ".json"))
 
 (defn mapcat-pages
-  [acct ks {:keys [next_page_uri] :as body}]
-  (if next_page_uri
-    (->> (get-command acct (str twilio-base next_page_uri) {} false)
-         (mapcat-pages acct ks)
-         (merge-with concat (select-keys body [ks])))
-    body))
+  ([acct k body] (mapcat-pages acct k {} body))
+  ([acct k
+    {:keys [page-size limit]
+     :or {page-size 1000
+          limit 1000}
+     :as options}
+    {:keys [next_page_uri] :as body}]
+   (if (and next_page_uri
+            (or (nil? limit)
+                (> limit (count (k body)))))
+     (let [body (->> (get-command acct (str twilio-base next_page_uri)
+                                  (as-twilio-query-params {:page-size page-size}) false)
+                     (merge-with concat (select-keys body [k])))]
+       (mapcat-pages acct k options body))
+     (if limit
+       (update body k (partial take limit))
+       body))))
 
 (defn- handle-reply
   [{:keys [status body] :as resp}]
@@ -302,9 +313,9 @@
 (defn subaccount? [account]
   (not (master-account? account)))
 
-(defmethod list-resources :subaccounts [acct factory]
+(defmethod list-resources :subaccounts [acct factory & {}]
   (->> (get-command acct (:url factory))
-       (twilio/mapcat-pages acct :accounts)
+       (mapcat-pages acct :accounts {:limit nil})
        :accounts
        (map #(map->Account (assoc % :acct acct)))
        (filter subaccount?)))
@@ -350,7 +361,7 @@
 (defmethod list-resources :applications [acct factory]
   (->> ((:urlfn factory) acct)
        (get-command acct)
-       (twilio/mapcat-pages acct :applications)
+       (mapcat-pages acct :applications {:limit nil})
        :applications
        (map (map-importer acct map->Application))))
 
@@ -449,7 +460,7 @@
   (->> acct
        ((:urlfn factory))
        (get-command acct)
-       (twilio/mapcat-pages acct :incoming_phone_numbers)
+       (mapcat-pages acct :incoming_phone_numbers {:limit nil})
        :incoming_phone_numbers
        (mapv (map-importer acct map->PhoneNumber))))
 
@@ -539,10 +550,10 @@
 
 
 (defmethod list-resources :messages [acct factory &
-                                     {:keys [to from date-sent] :as options}]
+                                     {:keys [to from date-sent limit] :as options}]
   (->> (get-command acct ((:urlfn factory) acct)
                     (as-twilio-query-params options))
-       (twilio/mapcat-pages acct :messages)
+       (mapcat-pages acct :messages {:limit limit})
        :messages
        (map (map-importer acct map->Message))))
 
