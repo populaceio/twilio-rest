@@ -8,5 +8,6 @@
   :dependencies [[org.clojure/clojure "1.8.0-RC4"]
                  [cheshire "5.3.1"]
                  [clj-http "2.0.0"]
+                 [im.chit/hara.event "2.2.14"]
                  [midje    "1.8.2"]]
   :plugins [[lein-midje "3.1.3"]])

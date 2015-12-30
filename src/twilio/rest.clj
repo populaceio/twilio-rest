@@ -22,10 +22,10 @@
    Additional additional nouns to this library should be straightforward.
    "
   (:refer-clojure :exclude [get])
-  (:require
-   [clojure.string :as string]
-   [cheshire.core :as json]
-   [clj-http.client :as http]))
+  (:require [cheshire.core :as json]
+            [clj-http.client :as http]
+            [clojure.string :as string]
+            [hara.event :refer :all]))
 
 
 ;;
@@ -152,7 +152,7 @@
     (if (and (>= status 200)
              (< status 300))
       body
-      (throw (ex-info "Error response from Twilio" body)))))
+      (raise body))))
 
 (defn get-command
   ([acct url request postfix?]
