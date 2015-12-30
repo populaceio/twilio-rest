@@ -146,25 +146,6 @@
 (defn- postfix-json [url]
   (str url ".json"))
 
-(defn mapcat-pages
-  ([acct k body] (mapcat-pages acct k {} body))
-  ([acct k
-    {:keys [page-size limit]
-     :or {page-size 1000
-          limit 1000}
-     :as options}
-    {:keys [next_page_uri] :as body}]
-   (if (and next_page_uri
-            (or (nil? limit)
-                (> limit (count (k body)))))
-     (let [body (->> (get-command acct (str twilio-base next_page_uri)
-                                  (as-twilio-query-params {:page-size page-size}) false)
-                     (merge-with concat (select-keys body [k])))]
-       (mapcat-pages acct k options body))
-     (if limit
-       (update body k (partial take limit))
-       body))))
-
 (defn- handle-reply
   [{:keys [status body] :as resp}]
   (let [body (json/parse-string body true)]
@@ -188,6 +169,25 @@
    (get-command acct url request true))
   ([acct url]
    (get-command acct url {})))
+
+(defn mapcat-pages
+  ([acct k body] (mapcat-pages acct k {} body))
+  ([acct k
+    {:keys [page-size limit]
+     :or {page-size 1000
+          limit 1000}
+     :as options}
+    {:keys [next_page_uri] :as body}]
+   (if (and next_page_uri
+            (or (nil? limit)
+                (> limit (count (k body)))))
+     (let [body (->> (get-command acct (str twilio-base next_page_uri)
+                                  (as-twilio-query-params {:page-size page-size}) false)
+                     (merge-with concat (select-keys body [k])))]
+       (mapcat-pages acct k options body))
+     (if limit
+       (update body k (partial take limit))
+       body))))
 
 (defn- post-command
   ([acct url request]
@@ -220,7 +220,7 @@
           (http/delete (postfix-json url))
           handle-reply))
   ([acct url]
-     (delete-command acct url {})))
+   (delete-command acct url {})))
 
 ;;
 ;; ## Resource protocol
