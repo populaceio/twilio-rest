@@ -544,3 +544,19 @@
   (get-command ((:urlfn factory) account)
                (pascalcase-map options)))
 
+
+;;
+;; Lookups
+;;
+
+(def Lookups
+  {:type :lookup
+   :urlfn (fn [number country-code]
+            (format "https://lookups.twilio.com/v1/PhoneNumbers/%s?Type=carrier&CountryCode=%s"
+                    number
+                    country-code))})
+
+(defn lookup
+  ([acct number] (lookup acct number "US"))
+  ([acct number country-code]
+   (get-command acct ((:urlfn Lookups) number country-code))))
