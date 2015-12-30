@@ -313,20 +313,24 @@
 (defn subaccount? [account]
   (not (master-account? account)))
 
-(defmethod list-resources :subaccounts [acct factory & {}]
-  (->> (get-command acct (:url factory))
+(defmethod list-resources :subaccounts [acct factory & {:keys [friendly-name status]
+                                                        :as filters}]
+  (->> (get-command acct (:url factory) (as-twilio-query-params filters))
        (mapcat-pages acct :accounts {:limit nil})
        :accounts
        (map #(map->Account (assoc % :acct acct)))
        (filter subaccount?)))
 
-(defn subaccounts [acct]
-  (list-resources acct Accounts))
+(defn subaccounts
+  ([acct] (subaccounts acct {}))
+  ([acct filters]
+   (apply list-resources acct Accounts (mapcat identity filters))))
 
 (defn get-subaccount [acct name]
-  (->> (subaccounts acct)
-       (filter #(= (:friendly_name %) name))
-       first))
+  (let [accounts (subaccounts acct {:friendly-name name
+                                    :status "active"})]
+    (assert (= 1 (count accounts)) (str "more than one active account exists with name: " name))
+    (first accounts)))
 
 (defn close-account [account]
   (set-account-status account "closed"))
@@ -358,9 +362,9 @@
    :urlfn (fn [acct]
             (format "%s/%s/Applications" (:url Accounts) (:sid acct)))})
 
-(defmethod list-resources :applications [acct factory]
-  (->> ((:urlfn factory) acct)
-       (get-command acct)
+(defmethod list-resources :applications [acct factory & {:keys [friendly-name]
+                                                        :as filters}]
+  (->> (get-command acct ((:urlfn factory) acct) (as-twilio-query-params filters))
        (mapcat-pages acct :applications {:limit nil})
        :applications
        (map (map-importer acct map->Application))))
@@ -372,13 +376,16 @@
                  {:form-params
                   (pascalcase-map params)})))
 
-(defn applications [acct]
-  (list-resources acct ApplicationList))
+(defn applications
+  ([acct] (applications acct {}))
+  ([acct filters]
+   (apply list-resources acct ApplicationList (mapcat identity filters))))
 
 (defn get-application [acct name]
-  (->> (list-resources acct ApplicationList)
-       (filter #(= (:friendly_name %) name))
-       first))
+  (let [applications (applications acct {:friendly-name name})]
+    (assert (= 1 (count applications)) (format "more than one application exists in account: %s with name: %s"
+                                               (:friendly_name acct) name))
+    (first applications)))
 
 (comment
   ;; Master
@@ -550,10 +557,11 @@
 
 
 (defmethod list-resources :messages [acct factory &
-                                     {:keys [to from date-sent limit] :as options}]
+                                     {:keys [to from date-sent limit page-size] :as options}]
   (->> (get-command acct ((:urlfn factory) acct)
                     (as-twilio-query-params options))
-       (mapcat-pages acct :messages {:limit limit})
+       (mapcat-pages acct :messages {:limit limit
+                                     :page-size page-size})
        :messages
        (map (map-importer acct map->Message))))
 
