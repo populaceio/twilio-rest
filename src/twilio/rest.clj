@@ -144,13 +144,13 @@
 (defn- postfix-json [url]
   (str url ".json"))
 
-(defn- handle-reply [request]
-  (let [status (:status request)]
+(defn- handle-reply
+  [{:keys [status body] :as resp}]
+  (let [body (json/parse-string body true)]
     (if (and (>= status 200)
              (< status 300))
-      (json/parse-string (:body request) true)
-      (throw (ex-info "Error response from Twilio"
-                      {:request request})))))
+      body
+      (throw (ex-info "Error response from Twilio" body)))))
 
 (defn get-command
   ([acct url request]
