@@ -153,15 +153,18 @@
       (throw (ex-info "Error response from Twilio" body)))))
 
 (defn get-command
-  ([acct url request]
+  ([acct url request postfix?]
    {:pre [(account? acct)]}
    (->> request
         (merge-with merge (as-twilio-query-params {:page-size 1000}))
         with-debug
         (with-auth acct)
         as-json
-        (http/get (postfix-json url))
+        (http/get (cond-> url
+                    postfix? postfix-json))
         handle-reply))
+  ([acct url request]
+   (get-command acct url request true))
   ([acct url]
    (get-command acct url {})))
 
@@ -565,4 +568,5 @@
   ([acct number country-code]
    (get-command acct ((:urlfn Lookups) number)
                 (as-twilio-query-params {:type "carrier"
-                                         :country-code country-code}))))
+                                         :country-code country-code})
+                false)))
