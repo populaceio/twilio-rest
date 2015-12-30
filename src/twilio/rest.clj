@@ -117,7 +117,7 @@
           (clojure.string/replace reference #"[\s\-\.]" ""))
         :default (throw (ex-info "Cannot convert to E.164 phone number string"
                                  {:reference reference}))))
-          
+
 
 ;;
 ;; Twilio REST API IO
@@ -154,15 +154,16 @@
 
 (defn get-command
   ([acct url request]
-     {:pre [(account? acct)]}
-     (->> request
-          with-debug
-          (with-auth acct)
-          as-json
-          (http/get (postfix-json url))
-          handle-reply))
+   {:pre [(account? acct)]}
+   (->> request
+        (merge-with merge (as-twilio-query-params {:page-size 1000}))
+        with-debug
+        (with-auth acct)
+        as-json
+        (http/get (postfix-json url))
+        handle-reply))
   ([acct url]
-     (get-command acct url {})))
+   (get-command acct url {})))
 
 (defn- post-command
   ([acct url request]
