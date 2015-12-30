@@ -314,7 +314,7 @@
 (defrecord Application [acct sid account_sid]
   RESTResource
   (url [app] (format "%s/Accounts/%s/Applications/%s"
-                     api-base (:account_sid app) (:sid app) ))
+                     api-base (:account_sid app) (:sid app)))
   (get [app] (get-command acct (url app)))
   (put! [app params]
     ((map-importer acct map->Application)
@@ -362,7 +362,7 @@
   ;; Sub Account
   (def subacct
     (create-resource master Accounts "Test Account"))
-  
+
   ;; Create a test application
   (create-resource subacct ApplicationList
                    {:friendly-name "Testing"
@@ -410,8 +410,10 @@
 (defrecord PhoneNumber [acct sid account_sid friendly_name phone_number sms_application_sid]
   RESTResource
   (url [number]
-    (str api-base "/Accounts/" (:account_sid number) "/IncomingPhoneNumbers/"
-         (:sid number)))
+    (format "%s/Accounts/%s/IncomingPhoneNumbers/%s"
+            api-base
+            (:account_sid number)
+            (:sid number)))
   (get [number] (merge number (get-command acct (url number))))
   (put! [number map]
     (post! (merge number map)))
@@ -503,7 +505,10 @@
   RESTResource
   (url [msg]
     (assert (:sid msg))
-    (str ((:urlfn Messages) acct) "/" (:sid msg)))
+    (format "%s/%s/Messages/%s"
+            (:url Accounts)
+            (:sid acct)
+            (:sid msg)))
   (get [msg]
     ((map-importer acct map->Message)
      (get-command acct (url msg))))
@@ -551,12 +556,12 @@
 
 (def Lookups
   {:type :lookup
-   :urlfn (fn [number country-code]
-            (format "https://lookups.twilio.com/v1/PhoneNumbers/%s?Type=carrier&CountryCode=%s"
-                    number
-                    country-code))})
+   :urlfn (fn [number]
+            (format "https://lookups.twilio.com/v1/PhoneNumbers/%s" number))})
 
 (defn lookup
   ([acct number] (lookup acct number "US"))
   ([acct number country-code]
-   (get-command acct ((:urlfn Lookups) number country-code))))
+   (get-command acct ((:urlfn Lookups) number)
+                (as-twilio-query-params {:type "carrier"
+                                         :country-code country-code}))))
