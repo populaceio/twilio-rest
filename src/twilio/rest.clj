@@ -383,8 +383,8 @@
 
 (defn get-application [acct name]
   (let [applications (applications acct {:friendly-name name})]
-    (assert (= 1 (count applications)) (format "more than one application exists in account: %s with name: %s"
-                                               (:friendly_name acct) name))
+    (assert (>= 1 (count applications)) (format "more than one application exists in account: %s with name: %s"
+                                                (:friendly_name acct) name))
     (first applications)))
 
 (comment
