@@ -329,7 +329,7 @@
 (defn get-subaccount [acct name]
   (let [accounts (subaccounts acct {:friendly-name name
                                     :status "active"})]
-    (assert (<= 1 (count accounts)) (str "more than one active account exists with name: " name))
+    (assert (>= 1 (count accounts)) (str "more than one active account exists with name: " name))
     (first accounts)))
 
 (defn close-account [account]

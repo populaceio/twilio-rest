@@ -47,7 +47,7 @@
 
 (defn numbers [name]
   (:numbers (registry-entry name)))
-  
+
 ;; Applications
 ;; ---------------------------------
 
@@ -70,8 +70,8 @@
 
 (defn- configure-application [app aname config]
   (rest/put! app (app-config->fields (name aname) config)))
-             
-(defn ensure-application 
+
+(defn ensure-application
   "Ensure application exists and is properly configured"
   [aname config]
   (let [acct (account aname)
@@ -109,7 +109,7 @@
     (ensure-application aname config)
     (sync-numbers aname)
     acct))
-    
+
 
 ;; Numbers
 ;; --------------------------------
@@ -217,13 +217,13 @@
 ;; OLD HANDLERS BELOW
 ;;===========================
 ;;===========================
-  
+
 ;;(defn receive-msg [args]
 ;;  (log/trace :in :receive-msg-page :args args)
 ;;  ((map-importer @active-controller map->Message)
 ;;   (underscorecase-map args)))
 ;;    (receive-message-handler (get msg))))
-    
+
 
 ;;(defn receive-message-status [args]
 ;;  (when-let [handler (:status-handler @active-controller)]
@@ -240,4 +240,3 @@
 ;  (log/trace :in :receive-sms-error-page :args (:params request))
 ;  (receive-message-status (underscorecase-map (:params request)))
 ;  {:status 200 :body {}})
-
